@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#042C53">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Morning Brief">
+<meta name="robots" content="noindex">
+<title>Morning Brief</title>
+</head>
+<body style="margin:0;background:#042C53;color:#FAEEDA;font-family:-apple-system,sans-serif">
+<div id="boot" style="min-height:90vh;display:flex;align-items:center;justify-content:center;font-size:15px;opacity:.8">Morning Brief…</div>
+<script>
+/* Morning Brief loader for GitHub Pages.
+   The app itself lives in Google Apps Script; this page loads it and talks to it without Google sign-in,
+   so it opens the same way whichever Google accounts the browser is signed in to.
+   The secret key is read from the link (#k=...) and is not stored in this repository. */
+(function () {
+  var API = 'https://script.google.com/macros/s/AKfycbyzZijvZIWnMso-6NF_5As9Nhpedg6X7AaQdilix8W9D8JLs6WMjKOqOeqyhA7oPdsp/exec';
+  var key = new URLSearchParams(location.hash.slice(1)).get('k') || new URLSearchParams(location.search).get('k') || '';
+  try { if (key) localStorage.setItem('mb_key', key); else key = localStorage.getItem('mb_key') || ''; } catch (_) {}
+
+  // Home-screen icon (drawn here so the repository needs no image files)
+  try {
+    var c = document.createElement('canvas'); c.width = c.height = 180; var g = c.getContext('2d');
+    g.fillStyle = '#042C53'; g.fillRect(0, 0, 180, 180);
+    g.fillStyle = '#EF9F27'; g.beginPath(); g.arc(90, 108, 36, Math.PI, 0); g.fill();
+    g.strokeStyle = '#EF9F27'; g.lineWidth = 6; g.lineCap = 'round';
+    for (var a = 200; a <= 340; a += 28) { var r = a * Math.PI / 180; g.beginPath(); g.moveTo(90 + Math.cos(r) * 48, 108 + Math.sin(r) * 48); g.lineTo(90 + Math.cos(r) * 63, 108 + Math.sin(r) * 63); g.stroke(); }
+    g.fillStyle = '#FAEEDA'; g.fillRect(32, 114, 116, 6);
+    var u = c.toDataURL('image/png');
+    ['apple-touch-icon', 'icon'].forEach(function (rel) { var l = document.createElement('link'); l.rel = rel; l.href = u; document.head.appendChild(l); });
+  } catch (_) {}
+
+  function call(fn, args, ok, fail) {
+    fetch(API + '?api=' + encodeURIComponent(fn) + '&k=' + encodeURIComponent(args.pop()) + '&a=' + encodeURIComponent(JSON.stringify(args)), { credentials: 'omit' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j && j.error) { if (fail) fail(new Error(j.error)); } else if (ok) ok(j.result); })
+      .catch(function (e) { if (fail) fail(e); });
+  }
+  function runner(ok, fail) {
+    return new Proxy({}, { get: function (_, fn) {
+      if (fn === 'withSuccessHandler') return function (f) { return runner(f, fail); };
+      if (fn === 'withFailureHandler') return function (f) { return runner(ok, f); };
+      return function () { call(fn, [].slice.call(arguments), ok, fail); };
+    } });
+  }
+  window.google = { script: { run: runner(), url: { getLocation: function (cb) { cb({ parameter: { k: key } }); } } } };
+
+  // Load the app page (cached copy first for speed, then the latest)
+  function show(html) {
+    var keepHead = [].slice.call(document.head.querySelectorAll('link[rel$="icon"]'));
+    document.open(); document.write(html); document.close();
+    keepHead.forEach(function (l) { document.head.appendChild(l); });
+  }
+  var cached = null; try { cached = localStorage.getItem('mb_page'); } catch (_) {}
+  fetch(API + '?api=page', { credentials: 'omit' }).then(function (r) { return r.text(); }).then(function (html) {
+    if (html.indexOf('<!DOCTYPE html>') !== 0) throw new Error('bad page');
+    try { localStorage.setItem('mb_page', html); } catch (_) {}
+    if (!cached) show(html);
+  }).catch(function () { if (!cached) document.getElementById('boot').textContent = 'โหลดไม่สำเร็จ ลองใหม่อีกครั้ง'; });
+  if (cached) show(cached);
+})();
+</script>
+</body>
+</html>
