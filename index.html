@@ -33,10 +33,17 @@
     ['apple-touch-icon', 'icon'].forEach(function (rel) { var l = document.createElement('link'); l.rel = rel; l.href = u; document.head.appendChild(l); });
   } catch (_) {}
 
+  function req(fn, args) {
+    var k = args[args.length - 1], a = args.slice(0, -1);
+    return fetch(API + '?api=' + encodeURIComponent(fn) + '&k=' + encodeURIComponent(k) + '&a=' + encodeURIComponent(JSON.stringify(a)), { credentials: 'omit' })
+      .then(function (r) { return r.json(); });
+  }
+  // Start loading today's data right away, in parallel with the page itself
+  var pre = key ? req('getData', [false, key]) : null;
   function call(fn, args, ok, fail) {
-    fetch(API + '?api=' + encodeURIComponent(fn) + '&k=' + encodeURIComponent(args.pop()) + '&a=' + encodeURIComponent(JSON.stringify(args)), { credentials: 'omit' })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { if (j && j.error) { if (fail) fail(new Error(j.error)); } else if (ok) ok(j.result); })
+    var p;
+    if (fn === 'getData' && pre && args[0] === false) { p = pre; pre = null; } else p = req(fn, args);
+    p.then(function (j) { if (j && j.error) { if (fail) fail(new Error(j.error)); } else if (ok) ok(j.result); })
       .catch(function (e) { if (fail) fail(e); });
   }
   function runner(ok, fail) {
