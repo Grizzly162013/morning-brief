@@ -55,19 +55,21 @@
   }
   window.google = { script: { run: runner(), url: { getLocation: function (cb) { cb({ parameter: { k: key } }); } } } };
 
-  // Load the app page (cached copy first for speed, then the latest)
+  // Load the app page: the latest version if it arrives within 2.5 s, otherwise the cached copy.
+  // (Writing the cached page straight away could stop the update download in Safari, leaving an old page forever.)
   function show(html) {
     var keepHead = [].slice.call(document.head.querySelectorAll('link[rel$="icon"]'));
     document.open(); document.write(html); document.close();
     keepHead.forEach(function (l) { document.head.appendChild(l); });
   }
-  var cached = null; try { cached = localStorage.getItem('mb_page'); } catch (_) {}
-  fetch(API + '?api=page', { credentials: 'omit' }).then(function (r) { return r.text(); }).then(function (html) {
+  var cached = null, shown = false; try { cached = localStorage.getItem('mb_page'); } catch (_) {}
+  function showOnce(html) { if (!shown) { shown = true; show(html); } }
+  fetch(API + '?api=page&t=' + Date.now(), { credentials: 'omit', cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (html) {
     if (html.indexOf('<!DOCTYPE html>') !== 0) throw new Error('bad page');
     try { localStorage.setItem('mb_page', html); } catch (_) {}
-    if (!cached) show(html);
-  }).catch(function () { if (!cached) document.getElementById('boot').textContent = 'โหลดไม่สำเร็จ ลองใหม่อีกครั้ง'; });
-  if (cached) show(cached);
+    showOnce(html);
+  }).catch(function () { if (cached) showOnce(cached); else document.getElementById('boot').textContent = 'โหลดไม่สำเร็จ ลองใหม่อีกครั้ง'; });
+  if (cached) setTimeout(function () { showOnce(cached); }, 2500);
 })();
 </script>
 </body>
